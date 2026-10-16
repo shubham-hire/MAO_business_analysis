@@ -1,0 +1,9 @@
+.DS_Store
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.vite/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
