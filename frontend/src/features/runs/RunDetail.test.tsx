@@ -18,7 +18,7 @@ const run: RunDetailModel = {
   claimCount: 3,
   verifiedClaimCount: 2,
   stages: [
-    { name: "market_statistics", state: "completed" as const, attempt: 1, sourceIds: ["source-1"], claimIds: [], evidenceIds: [], sourceCount: 1, claimCount: 0, evidenceCount: 0 },
+    { name: "market_statistics", state: "completed" as const, attempt: 1, sourceIds: ["source-1"], claimIds: [], evidenceIds: [], sourceCount: 1, claimCount: 0, evidenceCount: 0, iterations: 2, queryCount: 2, modelCallCount: 2, coverage: { summary: "Coverage reviewed.", coveredDimensions: ["market_size"], missingDimensions: ["market_growth"] } },
     { name: "competitor_research", state: "completed" as const, attempt: 1, sourceIds: ["source-2"], claimIds: [], evidenceIds: [], sourceCount: 1, claimCount: 0, evidenceCount: 0 },
     { name: "customer_voice", state: "skipped" as const, attempt: 1, sourceIds: [], claimIds: [], evidenceIds: [], sourceCount: 0, claimCount: 0, evidenceCount: 0 },
     { name: "claim_extraction", state: "completed" as const, attempt: 1, sourceIds: [], claimIds: ["claim-1"], evidenceIds: [], sourceCount: 0, claimCount: 1, evidenceCount: 0 },
@@ -39,5 +39,7 @@ describe("RunDetail", () => {
     expect(screen.getByRole("heading", { name: run.productName })).toBeInTheDocument();
     expect(screen.getByText("Verified claims")).toBeInTheDocument();
     expect(screen.getByText(/Report available/)).toBeInTheDocument();
+    expect(screen.getByTestId("market_statistics-progress")).toHaveTextContent("2 queries · 2 model calls");
+    expect(screen.getByTestId("market_statistics-coverage-gap")).toHaveTextContent("Missing: market growth");
   });
 });

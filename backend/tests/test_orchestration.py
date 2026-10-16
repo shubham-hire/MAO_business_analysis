@@ -4,10 +4,14 @@ import pytest
 
 from app.domain.run_service import RunService
 from app.infrastructure.memory_repository import MemoryRunRepository
+from app.agents.claim_extraction import ClaimBatch, ClaimCandidate
+from app.agents.market_research import CoverageDecision, SearchPlan
 from app.orchestration.pipeline import DeterministicPipeline, PipelineResult
 from app.orchestration.runner import RunRunner
+from app.orchestration.stages import verify_claims
 from app.providers.offline import StaticFixtureSourceProvider, fixture_source
-from app.schemas import MarketDefinitionProposal, ProductIntake
+from app.providers.protocols import ProviderResponse
+from app.schemas import Claim, ClaimType, MarketDefinitionProposal, ProductIntake, VerificationStatus
 
 
 def intake() -> ProductIntake:
@@ -95,6 +99,30 @@ async def test_permitted_excerpt_can_support_exact_evidence() -> None:
     assert detail.evidence[0].start_offset == 0
 
 
+def test_exact_evidence_uses_permitted_excerpt_when_stored_text_does_not_match() -> None:
+    source = fixture_source("Excerpt-only note", "Stored source body without the claim.").model_copy(
+        update={"permitted_excerpt": "Allowed excerpt: repeat delivery demand grew."}
+    )
+    claim_text = "repeat delivery demand grew."
+    claim = Claim(
+        id="claim-permitted-excerpt",
+        stable_key="source:permitted-excerpt",
+        text=claim_text,
+        subject="Local delivery marketplace",
+        attribute="market_signal",
+        region="India",
+        claim_type=ClaimType.SOURCE_REPORTED_FACT,
+        source_ids=[source.id],
+    )
+
+    output = verify_claims([claim], [source])
+
+    assert output.claims[0].verification_status == VerificationStatus.VERIFIED
+    assert output.evidence[0].excerpt == claim_text
+    assert output.evidence[0].start_offset == 17
+    assert output.evidence[0].end_offset == 45
+
+
 @pytest.mark.asyncio
 async def test_same_title_fixtures_with_different_text_remain_distinct() -> None:
     first = fixture_source("Same title", "First source text.")
@@ -177,3 +205,66 @@ async def test_incomplete_completed_result_is_marked_partial() -> None:
 
     assert detail.status == "partial"
     assert any("before all required stages" in warning.message for warning in detail.warnings)
+
+
+class FakeStructuredLLM:
+    def __init__(self, source_id: str, excerpt: str) -> None:
+        self.source_id = source_id
+        self.excerpt = excerpt
+        self.calls: list[str] = []
+
+    async def generate_structured(self, _system: str, _user: str, output_model, **_kwargs):
+        self.calls.append(output_model.__name__)
+        if output_model is SearchPlan:
+            return ProviderResponse(
+                status="available",
+                provider="nvidia",
+                value=SearchPlan(queries=["local delivery market statistics India"]),
+                usage={"total_tokens": 10},
+            )
+        if output_model is CoverageDecision:
+            return ProviderResponse(
+                status="available",
+                provider="nvidia",
+                value=CoverageDecision(
+                    action="stop",
+                    covered_dimensions=["regional_relevance", "demand_signal"],
+                    missing_dimensions=["market_size", "market_growth"],
+                    summary="Market size and growth remain open.",
+                ),
+                usage={"total_tokens": 8},
+            )
+        return ProviderResponse(
+            status="available",
+            provider="nvidia",
+            value=ClaimBatch(claims=[ClaimCandidate(
+                source_id=self.source_id,
+                text=self.excerpt,
+                subject="Local delivery marketplace",
+                attribute="market_signal",
+                region="India",
+            )]),
+            usage={"total_tokens": 20},
+        )
+
+
+@pytest.mark.asyncio
+async def test_hosted_agent_path_uses_llm_for_planning_and_claim_extraction() -> None:
+    repository = MemoryRunRepository()
+    service = RunService(repository)
+    source = fixture_source("Hosted market note", "Independent retailers reported repeat delivery demand.")
+    llm = FakeStructuredLLM(source.id, "Independent retailers reported repeat delivery demand.")
+    runner = RunRunner(service, DeterministicPipeline(StaticFixtureSourceProvider([source]), llm))
+    run = await queued_run(service)
+
+    await runner.run(run.id, "demo-user")
+    detail = await service.get_run(run.id, "demo-user")
+
+    assert llm.calls == ["SearchPlan", "CoverageDecision", "ClaimBatch"]
+    assert detail.verified_claim_count == 1
+    assert detail.stages[0].provider == "source"
+    assert detail.stages[0].query_count == 1
+    assert detail.stages[0].model_call_count == 2
+    assert detail.stages[0].coverage is not None
+    assert detail.stages[0].coverage.missing_dimensions == ["market_size", "market_growth"]
+    assert detail.stages[3].provider == "nvidia"

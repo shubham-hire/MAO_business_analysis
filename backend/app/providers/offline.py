@@ -9,12 +9,15 @@ from app.schemas import SourceSnapshot
 
 
 class UnavailableSourceProvider:
+    def __init__(self, warning: str | None = None) -> None:
+        self.warning = warning or "Research providers are not configured; no external evidence was collected."
+
     async def collect(self, _run: RunSnapshot, _stage: str) -> ProviderResponse[list[SourceSnapshot]]:
         return ProviderResponse(
             status="unavailable",
             provider="unconfigured",
             value=[],
-            warning="Research providers are not configured; no external evidence was collected.",
+            warning=self.warning,
         )
 
 

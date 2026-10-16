@@ -69,6 +69,18 @@ export type StageResult = {
   evidenceCount: number;
   warning?: string;
   errorCode?: string;
+  iterations?: number;
+  queryCount?: number;
+  modelCallCount?: number;
+  usage?: Record<string, number>;
+  coverage?: CoverageSnapshot;
+  budgetExhausted?: boolean;
+};
+
+export type CoverageSnapshot = {
+  summary: string;
+  coveredDimensions: string[];
+  missingDimensions: string[];
 };
 
 export type SourceSnapshot = {

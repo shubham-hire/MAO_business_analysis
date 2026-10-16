@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -171,6 +171,42 @@ class Claim(ApiModel):
         return self
 
 
+class CoverageSnapshot(ApiModel):
+    summary: str = ""
+    covered_dimensions: list[str] = Field(default_factory=list)
+    missing_dimensions: list[str] = Field(default_factory=list)
+
+
+class CompetitorObservation(ApiModel):
+    """Source-linked competitor facts retained before deterministic verification."""
+
+    competitor_name: str = Field(min_length=1, max_length=240)
+    source_type: Literal["user_listed", "discovered"] = "discovered"
+    identity: str = Field(default="unknown", max_length=1000)
+    target_customer: str = Field(default="unknown", max_length=1000)
+    features: list[str] = Field(default_factory=list, max_length=20)
+    positioning: str = Field(default="unknown", max_length=1000)
+    published_pricing: str = Field(default="unknown", max_length=300)
+    pricing_status: Literal["published", "unknown", "not_found"] = "unknown"
+    billing_period: str = Field(default="unknown", max_length=120)
+    currency: str = Field(default="unknown", max_length=20)
+    regional_availability: str = Field(default="unknown", max_length=500)
+    source_ids: list[str] = Field(default_factory=list, max_length=20)
+    verification_status: VerificationStatus = VerificationStatus.UNCHECKED
+
+    @property
+    def name(self) -> str:
+        return self.competitor_name
+
+    @property
+    def origin(self) -> str:
+        return self.source_type
+
+    @property
+    def pricing(self) -> str:
+        return self.published_pricing
+
+
 class StageResult(ApiModel):
     name: str
     state: StageState
@@ -186,6 +222,12 @@ class StageResult(ApiModel):
     evidence_count: int = Field(default=0, ge=0)
     warning: str | None = None
     error_code: str | None = None
+    iterations: int = Field(default=0, ge=0)
+    query_count: int = Field(default=0, ge=0)
+    model_call_count: int = Field(default=0, ge=0)
+    usage: dict[str, int | float] = Field(default_factory=dict)
+    coverage: CoverageSnapshot | None = None
+    budget_exhausted: bool = False
 
 
 # Backwards-compatible name for the first control-plane implementation.
@@ -201,6 +243,12 @@ class RunEvent(ApiModel):
     status: str
     actor: str = "system"
     stage: str | None = None
+    iteration: int | None = Field(default=None, ge=1)
+    query_count: int | None = Field(default=None, ge=0)
+    model_call_count: int | None = Field(default=None, ge=0)
+    source_count: int | None = Field(default=None, ge=0)
+    budget_exhausted: bool | None = None
+    coverage: CoverageSnapshot | None = None
 
 
 class RunSummary(ApiModel):

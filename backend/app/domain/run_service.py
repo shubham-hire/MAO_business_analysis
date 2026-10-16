@@ -9,6 +9,7 @@ from app.infrastructure.memory_repository import MemoryRunRepository
 from app.orchestration.pipeline import PipelineResult
 from app.schemas import (
     MarketDefinitionProposal,
+    CoverageSnapshot,
     ProductIntake,
     RunDetail,
     RunEvent,
@@ -168,6 +169,12 @@ class RunService:
             stage.evidence_count = len(output.evidence)
             stage.warning = output.warning
             stage.error_code = output.error_code
+            stage.iterations = output.iterations
+            stage.query_count = output.query_count
+            stage.model_call_count = output.model_call_count
+            stage.usage = output.usage
+            stage.coverage = output.coverage
+            stage.budget_exhausted = output.budget_exhausted
             if stage.state != StageState.SKIPPED:
                 if stage.started_at is None:
                     stage.started_at = output.started_at or now()
@@ -185,6 +192,12 @@ class RunService:
                 stage.state,
                 output.warning or f"{stage.name} stage {stage.state.value}.",
                 timestamp=stage.completed_at,
+                iteration=stage.iterations or None,
+                query_count=stage.query_count,
+                model_call_count=stage.model_call_count,
+                source_count=stage.source_count,
+                budget_exhausted=stage.budget_exhausted,
+                coverage=stage.coverage,
             ))
         if result.outcome == "failed":
             active_stage = next((stage for stage in run.stages if stage.state == StageState.RUNNING), None)
@@ -221,6 +234,12 @@ class RunService:
         state: StageState,
         message: str,
         timestamp: datetime | None = None,
+        iteration: int | None = None,
+        query_count: int | None = None,
+        model_call_count: int | None = None,
+        source_count: int | None = None,
+        budget_exhausted: bool | None = None,
+        coverage: CoverageSnapshot | None = None,
     ) -> RunEvent:
         return RunEvent(
             id=f"event-{uuid4().hex[:12]}",
@@ -231,6 +250,12 @@ class RunService:
             status=state.value,
             actor="system",
             stage=stage,
+            iteration=iteration,
+            query_count=query_count,
+            model_call_count=model_call_count,
+            source_count=source_count,
+            budget_exhausted=budget_exhausted,
+            coverage=coverage,
         )
 
     async def _get(self, run_id: str, owner_id: str) -> RunSnapshot:

@@ -6,7 +6,7 @@ from hashlib import sha256
 
 from app.domain.run_snapshot import RunSnapshot
 from app.providers.protocols import SourceProvider
-from app.schemas import Claim, ClaimType, EvidenceRecord, EvidenceGrade, SourceSnapshot, VerificationStatus
+from app.schemas import Claim, ClaimType, CoverageSnapshot, EvidenceRecord, EvidenceGrade, SourceSnapshot, VerificationStatus
 
 
 def utc_now() -> datetime:
@@ -25,6 +25,12 @@ class StageOutput:
     evidence: list[EvidenceRecord] = field(default_factory=list)
     warning: str | None = None
     error_code: str | None = None
+    iterations: int = 0
+    query_count: int = 0
+    model_call_count: int = 0
+    usage: dict[str, int | float] = field(default_factory=dict)
+    coverage: CoverageSnapshot | None = None
+    budget_exhausted: bool = False
 
 
 async def collect_sources(run: RunSnapshot, stage: str, provider: SourceProvider) -> StageOutput:
@@ -36,8 +42,9 @@ async def collect_sources(run: RunSnapshot, stage: str, provider: SourceProvider
         started_at=started_at,
         completed_at=utc_now(),
         provider=response.provider,
-        sources=response.value,
+        sources=response.value or [],
         warning=response.warning,
+        error_code=response.error_code,
     )
 
 
@@ -79,16 +86,22 @@ def verify_claims(claims: list[Claim], sources: list[SourceSnapshot]) -> StageOu
     verified_claims: list[Claim] = []
     for claim in claims:
         source = next((source_by_id.get(source_id) for source_id in claim.source_ids), None)
-        source_text = (source.stored_text or source.permitted_excerpt) if source else None
-        if source and source_text and claim.text in source_text:
+        matching_text = None
+        if source:
+            for source_text in (source.stored_text, source.permitted_excerpt):
+                if source_text and claim.text in source_text:
+                    matching_text = source_text
+                    break
+        if source and matching_text:
             evidence_id = f"evidence-{sha256((claim.id + source.id).encode()).hexdigest()[:10]}"
+            start_offset = matching_text.index(claim.text)
             evidence.append(EvidenceRecord(
                 id=evidence_id,
                 claim_id=claim.id,
                 source_id=source.id,
                 excerpt=claim.text,
-                start_offset=source_text.index(claim.text),
-                end_offset=source_text.index(claim.text) + len(claim.text),
+                start_offset=start_offset,
+                end_offset=start_offset + len(claim.text),
                 relation="supports",
                 excerpt_match="exact",
             ))

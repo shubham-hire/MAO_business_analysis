@@ -9,6 +9,7 @@ The repository contains a responsive public landing page and the authenticated a
 
 - Node.js `22.23.3` (see `frontend/.nvmrc`)
 - npm 10+
+- Python `3.11.2` (see `.python-version`)
 
 ## Setup
 
@@ -30,10 +31,11 @@ The public landing page is the default view at `/`. Choose **Open application** 
 
 ## Backend setup
 
-The first backend slice is a FastAPI run-control plane. It owns intake validation, deterministic market-definition proposals, ownership-scoped run retrieval, confirmation state transitions and structured run events. It intentionally performs no external search or model calls yet.
+The backend is a FastAPI run-control plane. It owns intake validation, deterministic market-definition proposals, ownership-scoped run retrieval, confirmation state transitions, structured run events and evidence artifacts. It remains offline by default. An optional Tavily source provider can collect live search results when explicitly enabled.
 
 ```bash
 make backend-install
+cp backend/.env.example backend/.env
 make backend-dev
 ```
 
@@ -49,6 +51,28 @@ GET  /runs/{id}/events
 ```
 
 The default development identity is `demo-user`. A real authentication layer will replace the development `X-User-ID` header before multi-user use.
+
+Keep `SOURCE_PROVIDER=offline` for deterministic local development. To enable Tavily, set these values in `backend/.env`:
+
+```env
+SOURCE_PROVIDER=tavily
+TAVILY_API_KEY=your-server-side-key
+TAVILY_SEARCH_DEPTH=advanced
+TAVILY_MAX_RESULTS=5
+TAVILY_MAX_QUERIES_PER_STAGE=2
+TAVILY_INCLUDE_RAW_CONTENT=true
+MARKET_AGENT_MAX_ITERATIONS=2
+MARKET_AGENT_MAX_QUERIES=4
+MARKET_AGENT_MAX_MODEL_CALLS=4
+MARKET_AGENT_MAX_SOURCES=10
+MARKET_AGENT_TIMEOUT_SECONDS=120
+LLM_PROVIDER=nvidia
+NVIDIA_API_KEY=your-server-side-key
+NVIDIA_MODEL=nvidia/nemotron-3-super-120b-a12b
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+```
+
+The Tavily and NVIDIA keys are server-side only and must never be placed in `frontend/.env`. The market research agent uses NVIDIA to plan bounded queries and review coverage, Tavily to collect raw source snapshots, and deterministic Python to verify excerpts. Each market run is limited to two research rounds, four queries, four model attempts, ten retained sources and 120 seconds. When NVIDIA is unavailable, the pipeline falls back to deterministic query and claim extraction. A provider failure produces a partial run with a warning; it does not fabricate evidence. The current assessment and report stages are still intentionally unavailable, so research runs remain partial until those stages are implemented.
 
 To point the frontend at the backend instead of local fixtures:
 
@@ -67,7 +91,7 @@ make lint
 make build
 ```
 
-The test command runs both frontend and backend suites offline. Frontend tests cover dashboard state rendering, readable run statuses, partial warnings, empty state, retry behavior and loading behavior. Backend tests cover intake validation, run creation, ownership isolation, market confirmation, state transitions, event replay and the honest no-provider demo pipeline.
+The test command runs both frontend and backend suites offline. Frontend tests cover dashboard state rendering, readable run statuses, partial warnings, empty state, retry behavior and loading behavior. Backend tests cover intake validation, run creation, ownership isolation, market confirmation, state transitions, event replay, the honest no-provider demo pipeline and mocked Tavily result mapping. No normal test calls the network.
 
 ## Docker
 

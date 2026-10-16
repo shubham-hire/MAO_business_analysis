@@ -15,7 +15,7 @@ dev:
 	cd $(FRONTEND_DIR) && npm run dev -- --host 0.0.0.0
 
 backend-dev:
-	$(BACKEND_PYTHON) -m uvicorn app.main:app --app-dir $(BACKEND_DIR) --reload --host 0.0.0.0 --port 8000
+	if [ -f $(BACKEND_DIR)/.env ]; then $(BACKEND_PYTHON) -m uvicorn app.main:app --app-dir $(BACKEND_DIR) --env-file $(BACKEND_DIR)/.env --reload --host 0.0.0.0 --port 8000; else $(BACKEND_PYTHON) -m uvicorn app.main:app --app-dir $(BACKEND_DIR) --reload --host 0.0.0.0 --port 8000; fi
 
 test:
 	cd $(FRONTEND_DIR) && npm test

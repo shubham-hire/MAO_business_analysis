@@ -44,7 +44,13 @@ export function RunDetail({ run, onBack }: RunDetailProps) {
 function StageRow({ stage }: { stage: StageResult }) {
   const labels: Record<string, string> = { market_statistics: "Market statistics", competitor_research: "Competitor research", customer_voice: "Customer voice", claim_extraction: "Claim extraction", evidence_verification: "Evidence verification", assessment: "Feasibility assessment", report_generation: "Report generation" };
   const descriptions: Record<string, string> = { market_statistics: "Figures with year, region and market definition.", competitor_research: "Products, features and published pricing.", customer_voice: "Optional permitted public feedback.", claim_extraction: "Source material turned into stable claims.", evidence_verification: "Excerpts checked against stored source text.", assessment: "Seven dimensions using verified claims.", report_generation: "Decision-support report artifact." };
-  return <div className="detail-stage"><span className={`stage-marker stage-${stage.state}`}>{stage.state === "completed" ? "✓" : stage.state === "skipped" ? "—" : stage.name.slice(0, 2).toUpperCase()}</span><div><strong>{labels[stage.name] || stage.name}</strong><p>{stage.warning || descriptions[stage.name] || "Stage status from the orchestration service."}</p></div><span className="stage-state">{stage.state}</span></div>;
+  const hasMetadata = stage.queryCount !== undefined || stage.modelCallCount !== undefined || stage.iterations !== undefined;
+  const missing = stage.coverage?.missingDimensions ?? [];
+  return <div className="detail-stage"><span className={`stage-marker stage-${stage.state}`}>{stage.state === "completed" ? "✓" : stage.state === "skipped" ? "—" : stage.name.slice(0, 2).toUpperCase()}</span><div><strong>{labels[stage.name] || stage.name}</strong><p>{stage.warning || descriptions[stage.name] || "Stage status from the orchestration service."}</p>{hasMetadata ? <span className="stage-meta" data-testid={`${stage.name}-progress`}>{stage.queryCount ?? 0} queries · {stage.modelCallCount ?? 0} model calls{stage.iterations ? ` · ${stage.iterations} rounds` : ""}</span> : null}{missing.length > 0 ? <span className="stage-gap" data-testid={`${stage.name}-coverage-gap`}>Missing: {missing.map(formatDimension).join(", ")}</span> : null}</div><span className="stage-state">{stage.state}</span></div>;
+}
+
+function formatDimension(value: string) {
+  return value.replaceAll("_", " ");
 }
 
 function ArtifactCount({ label, value }: { label: string; value: number }) {

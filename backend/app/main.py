@@ -4,15 +4,21 @@ from fastapi import BackgroundTasks, FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.agents.contracts import AgentBudget
+from app.config import Settings, build_llm_provider, build_source_provider
 from app.domain.run_service import InvalidTransition, MissingRun, RunService
 from app.infrastructure.memory_repository import MemoryRunRepository
+from app.orchestration.pipeline import DeterministicPipeline
 from app.orchestration.runner import RunRunner
+from app.providers.protocols import SourceProvider
 from app.schemas import EventPage, MarketDefinitionProposal, ProductIntake, RunDetail, RunSummary
 
 
 def create_app(
     repository: MemoryRunRepository | None = None,
     runner: RunRunner | None = None,
+    settings: Settings | None = None,
+    source_provider: SourceProvider | None = None,
 ) -> FastAPI:
     app = FastAPI(
         title="Tracer Market Feasibility API",
@@ -28,7 +34,20 @@ def create_app(
     )
     app.state.repository = repository or MemoryRunRepository()
     app.state.service = RunService(app.state.repository)
-    app.state.runner = runner or RunRunner(app.state.service)
+    app.state.settings = settings or Settings.from_env()
+    configured_provider = source_provider or build_source_provider(app.state.settings)
+    configured_llm = build_llm_provider(app.state.settings)
+    market_budget = AgentBudget(
+        max_iterations=app.state.settings.market_agent_max_iterations,
+        max_queries=app.state.settings.market_agent_max_queries,
+        max_model_calls=app.state.settings.market_agent_max_model_calls,
+        max_sources=app.state.settings.market_agent_max_sources,
+        timeout_seconds=app.state.settings.market_agent_timeout_seconds,
+    )
+    app.state.runner = runner or RunRunner(
+        app.state.service,
+        DeterministicPipeline(configured_provider, configured_llm, market_budget),
+    )
 
     @app.exception_handler(MissingRun)
     async def missing_run_handler(_request: Request, exc: MissingRun) -> JSONResponse:

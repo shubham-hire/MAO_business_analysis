@@ -16,8 +16,10 @@ T = TypeVar("T")
 class ProviderResponse(Generic[T]):
     status: str
     provider: str
-    value: T
+    value: T | None
     warning: str | None = None
+    error_code: str | None = None
+    attempts: int = 1
     usage: dict[str, int | float] | None = None
 
 
@@ -32,5 +34,7 @@ class LLMProvider(Protocol):
         system_prompt: str,
         user_content: str,
         output_model: type[BaseModel],
+        *,
+        max_attempts: int | None = None,
     ) -> ProviderResponse[BaseModel]:
         ...
