@@ -1,4 +1,4 @@
-import type { RunDetail as RunDetailModel, StageResult } from "./models";
+import type { CompetitorObservation, RunDetail as RunDetailModel, StageResult } from "./models";
 import { StatusBadge } from "../../components/runs/StatusBadge";
 
 type RunDetailProps = {
@@ -7,6 +7,7 @@ type RunDetailProps = {
 };
 
 export function RunDetail({ run, onBack }: RunDetailProps) {
+  const competitors = run.competitorObservations ?? [];
   return (
     <main className="run-detail-page">
       <button className="back-link" type="button" onClick={onBack}>← Back to runs</button>
@@ -31,7 +32,8 @@ export function RunDetail({ run, onBack }: RunDetailProps) {
 
         <section className="detail-panel detail-evidence" aria-labelledby="evidence-title">
           <div className="detail-panel-heading"><div><div className="section-marker section-marker-dark">ARTIFACTS</div><h2 id="evidence-title">What exists</h2></div><span className="evidence-total">{run.verifiedClaimCount ?? 0}</span></div>
-          <div className="artifact-counts"><ArtifactCount label="Sources" value={run.sourceCount ?? run.sources.length} /><ArtifactCount label="Claims" value={run.claimCount ?? run.claims.length} /><ArtifactCount label="Evidence records" value={run.evidenceCount ?? run.evidence.length} /><ArtifactCount label="Verified claims" value={run.verifiedClaimCount ?? run.claims.filter((claim) => claim.verificationStatus === "verified").length} /></div>
+          <div className="artifact-counts"><ArtifactCount label="Sources" value={run.sourceCount ?? run.sources.length} /><ArtifactCount label="Claims" value={run.claimCount ?? run.claims.length} /><ArtifactCount label="Evidence records" value={run.evidenceCount ?? run.evidence.length} /><ArtifactCount label="Verified claims" value={run.verifiedClaimCount ?? run.claims.filter((claim) => claim.verificationStatus === "verified").length} /><ArtifactCount label="Competitors" value={competitors.length} /></div>
+          {competitors.length > 0 ? <CompetitorSummary observations={competitors} /> : null}
           {run.warnings.length > 0 ? <div className="detail-empty detail-provider-warning"><span aria-hidden="true">!</span><p>{run.warnings[0].message}</p></div> : run.sources.length === 0 ? <div className="detail-empty"><span aria-hidden="true">—</span><p>No external evidence has been collected for this run yet.</p></div> : <div className="evidence-summary"><strong>{run.sources.length} source snapshots retained</strong><p>Source material is stored with the run so later verification can be replayed.</p></div>}
         </section>
       </div>
@@ -39,6 +41,10 @@ export function RunDetail({ run, onBack }: RunDetailProps) {
       <footer className="run-detail-footer"><span>Created {formatDate(run.createdAt)}</span><span>Updated {formatDate(run.updatedAt)}</span><span>{run.reportAvailable ? "Report available · snapshot ready" : "Report not available"}</span></footer>
     </main>
   );
+}
+
+function CompetitorSummary({ observations }: { observations: CompetitorObservation[] }) {
+  return <div className="competitor-summary"><strong>Competitor observations</strong>{observations.map((observation) => <div className="competitor-observation" key={observation.competitorName}><span>{observation.competitorName}</span><span>{observation.pricingStatus === "published" ? observation.publishedPricing : "Price not published"}</span></div>)}</div>;
 }
 
 function StageRow({ stage }: { stage: StageResult }) {

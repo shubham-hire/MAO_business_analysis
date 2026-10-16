@@ -30,6 +30,7 @@ const run: RunDetailModel = {
   sources: [],
   claims: [],
   evidence: [],
+  competitorObservations: [{ competitorName: "Known Co", sourceType: "user_listed", identity: "Known Co marketplace", targetCustomer: "Independent retailers", features: ["delivery"], positioning: "For local retailers", publishedPricing: "INR 999/month", pricingStatus: "published", billingPeriod: "monthly", currency: "INR", regionalAvailability: "India", sourceIds: ["source-1"], verificationStatus: "unchecked" }],
 };
 
 describe("RunDetail", () => {
@@ -41,5 +42,7 @@ describe("RunDetail", () => {
     expect(screen.getByText(/Report available/)).toBeInTheDocument();
     expect(screen.getByTestId("market_statistics-progress")).toHaveTextContent("2 queries · 2 model calls");
     expect(screen.getByTestId("market_statistics-coverage-gap")).toHaveTextContent("Missing: market growth");
+    expect(screen.getByText("Known Co")).toBeInTheDocument();
+    expect(screen.getByText("INR 999/month")).toBeInTheDocument();
   });
 });

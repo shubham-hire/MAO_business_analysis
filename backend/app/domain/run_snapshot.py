@@ -10,6 +10,7 @@ from app.schemas import (
     RunStatus,
     RunWarning,
     Claim,
+    CompetitorObservation,
     EvidenceRecord,
     SourceSnapshot,
     StageSnapshot,
@@ -46,3 +47,4 @@ class RunSnapshot:
     sources: list[SourceSnapshot] = field(default_factory=list)
     claims: list[Claim] = field(default_factory=list)
     evidence: list[EvidenceRecord] = field(default_factory=list)
+    competitor_observations: list[CompetitorObservation] = field(default_factory=list)

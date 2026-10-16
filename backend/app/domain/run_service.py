@@ -147,6 +147,7 @@ class RunService:
         run.sources = result.sources
         run.claims = result.claims
         run.evidence = result.evidence
+        run.competitor_observations = result.observations
         run.evidence_count = len(run.evidence)
         run.report_available = result.report_available
         for warning in result.warnings:
@@ -175,6 +176,7 @@ class RunService:
             stage.usage = output.usage
             stage.coverage = output.coverage
             stage.budget_exhausted = output.budget_exhausted
+            stage.observations = output.observations
             if stage.state != StageState.SKIPPED:
                 if stage.started_at is None:
                     stage.started_at = output.started_at or now()
@@ -309,4 +311,12 @@ class RunService:
     @staticmethod
     def _detail(run: RunSnapshot) -> RunDetail:
         summary = RunService._summary(run)
-        return RunDetail(**summary.model_dump(), stages=run.stages, intake=run.intake, sources=run.sources, claims=run.claims, evidence=run.evidence)
+        return RunDetail(
+            **summary.model_dump(),
+            stages=run.stages,
+            intake=run.intake,
+            sources=run.sources,
+            claims=run.claims,
+            evidence=run.evidence,
+            competitor_observations=run.competitor_observations,
+        )

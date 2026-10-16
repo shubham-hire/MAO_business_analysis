@@ -72,7 +72,7 @@ NVIDIA_MODEL=nvidia/nemotron-3-super-120b-a12b
 NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
 ```
 
-The Tavily and NVIDIA keys are server-side only and must never be placed in `frontend/.env`. The market research agent uses NVIDIA to plan bounded queries and review coverage, Tavily to collect raw source snapshots, and deterministic Python to verify excerpts. Each market run is limited to two research rounds, four queries, four model attempts, ten retained sources and 120 seconds. When NVIDIA is unavailable, the pipeline falls back to deterministic query and claim extraction. A provider failure produces a partial run with a warning; it does not fabricate evidence. The current assessment and report stages are still intentionally unavailable, so research runs remain partial until those stages are implemented.
+The Tavily and NVIDIA keys are server-side only and must never be placed in `frontend/.env`. The market and competitor agents run concurrently, use NVIDIA for bounded planning and coverage review, use Tavily for raw source snapshots, and leave deterministic Python as the final evidence verifier. Each agent is limited to two research rounds, four queries, four model attempts, ten retained sources and 120 seconds. Competitor observations distinguish user-listed competitors from discovered alternatives and keep unpublished pricing as unknown. When NVIDIA is unavailable, the pipeline falls back to deterministic query and claim extraction. A provider failure produces a partial run with a warning; it does not fabricate evidence. The current assessment and report stages are still intentionally unavailable, so research runs remain partial until those stages are implemented.
 
 To point the frontend at the backend instead of local fixtures:
 
@@ -91,7 +91,7 @@ make lint
 make build
 ```
 
-The test command runs both frontend and backend suites offline. Frontend tests cover dashboard state rendering, readable run statuses, partial warnings, empty state, retry behavior and loading behavior. Backend tests cover intake validation, run creation, ownership isolation, market confirmation, state transitions, event replay, the honest no-provider demo pipeline and mocked Tavily result mapping. No normal test calls the network.
+The test command runs both frontend and backend suites offline. Frontend tests cover dashboard state rendering, readable run statuses, partial warnings, empty state, retry behavior, loading behavior and competitor observations. Backend tests cover intake validation, run creation, ownership isolation, market confirmation, state transitions, event replay, adaptive market and competitor agents, concurrent failure isolation, the honest no-provider pipeline and mocked Tavily/NVIDIA provider behavior. No normal test calls the network.
 
 ## Docker
 

@@ -203,6 +203,14 @@ class CompetitorObservation(ApiModel):
         return self.source_type
 
     @property
+    def source_kind(self) -> str:
+        return self.source_type
+
+    @property
+    def is_user_listed(self) -> bool:
+        return self.source_type == "user_listed"
+
+    @property
     def pricing(self) -> str:
         return self.published_pricing
 
@@ -228,6 +236,7 @@ class StageResult(ApiModel):
     usage: dict[str, int | float] = Field(default_factory=dict)
     coverage: CoverageSnapshot | None = None
     budget_exhausted: bool = False
+    observations: list[CompetitorObservation] = Field(default_factory=list)
 
 
 # Backwards-compatible name for the first control-plane implementation.
@@ -275,6 +284,7 @@ class RunDetail(RunSummary):
     sources: list[SourceSnapshot] = Field(default_factory=list)
     claims: list[Claim] = Field(default_factory=list)
     evidence: list[EvidenceRecord] = Field(default_factory=list)
+    competitor_observations: list[CompetitorObservation] = Field(default_factory=list)
 
 
 class EventPage(ApiModel):

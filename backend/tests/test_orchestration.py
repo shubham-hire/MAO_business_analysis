@@ -1,17 +1,23 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from app.domain.run_service import RunService
 from app.infrastructure.memory_repository import MemoryRunRepository
 from app.agents.claim_extraction import ClaimBatch, ClaimCandidate
-from app.agents.market_research import CoverageDecision, SearchPlan
+from app.agents.market_research import CoverageDecision as MarketCoverageDecision, SearchPlan as MarketSearchPlan
+from app.agents.competitor_research import CoverageDecision as CompetitorCoverageDecision, SearchPlan as CompetitorSearchPlan
 from app.orchestration.pipeline import DeterministicPipeline, PipelineResult
 from app.orchestration.runner import RunRunner
 from app.orchestration.stages import verify_claims
 from app.providers.offline import StaticFixtureSourceProvider, fixture_source
 from app.providers.protocols import ProviderResponse
-from app.schemas import Claim, ClaimType, MarketDefinitionProposal, ProductIntake, VerificationStatus
+from app.schemas import Claim, ClaimType, CompetitorObservation, MarketDefinitionProposal, ProductIntake, VerificationStatus
+
+SearchPlan = MarketSearchPlan
+CoverageDecision = MarketCoverageDecision
 
 
 def intake() -> ProductIntake:
@@ -215,18 +221,18 @@ class FakeStructuredLLM:
 
     async def generate_structured(self, _system: str, _user: str, output_model, **_kwargs):
         self.calls.append(output_model.__name__)
-        if output_model is SearchPlan:
+        if output_model.__name__ == "SearchPlan":
             return ProviderResponse(
                 status="available",
                 provider="nvidia",
-                value=SearchPlan(queries=["local delivery market statistics India"]),
+                value=output_model(queries=["local delivery market statistics India"]),
                 usage={"total_tokens": 10},
             )
-        if output_model is CoverageDecision:
+        if output_model.__name__ == "CoverageDecision":
             return ProviderResponse(
                 status="available",
                 provider="nvidia",
-                value=CoverageDecision(
+                value=output_model(
                     action="stop",
                     covered_dimensions=["regional_relevance", "demand_signal"],
                     missing_dimensions=["market_size", "market_growth"],
@@ -260,7 +266,9 @@ async def test_hosted_agent_path_uses_llm_for_planning_and_claim_extraction() ->
     await runner.run(run.id, "demo-user")
     detail = await service.get_run(run.id, "demo-user")
 
-    assert llm.calls == ["SearchPlan", "CoverageDecision", "ClaimBatch"]
+    assert llm.calls.count("SearchPlan") == 2
+    assert llm.calls.count("CoverageDecision") == 2
+    assert llm.calls.count("ClaimBatch") == 1
     assert detail.verified_claim_count == 1
     assert detail.stages[0].provider == "source"
     assert detail.stages[0].query_count == 1
@@ -268,3 +276,100 @@ async def test_hosted_agent_path_uses_llm_for_planning_and_claim_extraction() ->
     assert detail.stages[0].coverage is not None
     assert detail.stages[0].coverage.missing_dimensions == ["market_size", "market_growth"]
     assert detail.stages[3].provider == "nvidia"
+
+
+class ParallelSourceProvider:
+    def __init__(self) -> None:
+        self.active = 0
+        self.max_active = 0
+        self.calls: list[str] = []
+
+    async def collect_queries(self, _run, stage, queries, **_kwargs):
+        self.calls.append(stage)
+        self.active += 1
+        self.max_active = max(self.max_active, self.active)
+        try:
+            await asyncio.sleep(0.01)
+            source = fixture_source(f"{stage} source", f"{stage} source content for India.")
+            return ProviderResponse(
+                status="available",
+                provider="fake-tavily",
+                value=[source],
+                usage={"query_count": len(queries)},
+            )
+        finally:
+            self.active -= 1
+
+
+class ParallelAgentLLM:
+    async def generate_structured(self, _system, _user, output_model, **_kwargs):
+        if output_model in {MarketSearchPlan, CompetitorSearchPlan}:
+            return ProviderResponse(
+                status="available",
+                provider="fake-nvidia",
+                value=output_model(queries=["bounded research query"]),
+            )
+        if output_model in {MarketCoverageDecision, CompetitorCoverageDecision}:
+            if output_model is CompetitorCoverageDecision:
+                value = output_model(
+                    action="stop",
+                    covered_dimensions=["identity"],
+                    missing_dimensions=["published_pricing"],
+                    observations=[CompetitorObservation(competitor_name="Discovered Co", source_ids=[])],
+                )
+            else:
+                value = output_model(
+                    action="stop",
+                    covered_dimensions=["regional_relevance"],
+                    missing_dimensions=["market_size"],
+                )
+            return ProviderResponse(status="available", provider="fake-nvidia", value=value)
+        if output_model is ClaimBatch:
+            return ProviderResponse(status="available", provider="fake-nvidia", value=ClaimBatch())
+        raise AssertionError(f"Unexpected output model: {output_model.__name__}")
+
+
+class MarketOnlyProvider(ParallelSourceProvider):
+    async def collect_queries(self, run, stage, queries, **kwargs):
+        if stage == "competitor_research":
+            raise RuntimeError("competitor provider unavailable")
+        return await super().collect_queries(run, stage, queries, **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_market_and_competitor_agents_run_concurrently_and_merge_artifacts() -> None:
+    provider = ParallelSourceProvider()
+    llm = ParallelAgentLLM()
+    repository = MemoryRunRepository()
+    service = RunService(repository)
+    run = await queued_run(service)
+
+    runner = RunRunner(service, DeterministicPipeline(provider, llm))
+    await runner.run(run.id, "demo-user")
+    detail = await service.get_run(run.id, "demo-user")
+
+    assert provider.max_active == 2
+    assert set(provider.calls) == {"market_statistics", "competitor_research"}
+    assert len(detail.sources) == 2
+    assert detail.competitor_observations[0].competitor_name == "Discovered Co"
+    competitor_stage = next(stage for stage in detail.stages if stage.name == "competitor_research")
+    assert competitor_stage.observations[0].competitor_name == "Discovered Co"
+
+
+@pytest.mark.asyncio
+async def test_competitor_failure_preserves_market_artifacts() -> None:
+    provider = MarketOnlyProvider()
+    llm = ParallelAgentLLM()
+    repository = MemoryRunRepository()
+    service = RunService(repository)
+    run = await queued_run(service)
+
+    await RunRunner(service, DeterministicPipeline(provider, llm)).run(run.id, "demo-user")
+    detail = await service.get_run(run.id, "demo-user")
+
+    assert detail.status == "partial"
+    assert detail.sources
+    assert any(source.origin == "offline_fixture" for source in detail.sources)
+    competitor_stage = next(stage for stage in detail.stages if stage.name == "competitor_research")
+    assert competitor_stage.state == "partial"
+    assert any("provider" in warning.message.lower() for warning in detail.warnings)

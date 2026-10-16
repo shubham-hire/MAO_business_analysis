@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Literal
 
 from app.agents.claim_extraction import ClaimExtractionAgent
+from app.agents.competitor_research import CompetitorResearchAgent
 from app.agents.context import make_context
 from app.agents.contracts import AgentBudget, AgentResult
 from app.agents.market_research import MarketResearchAgent
 from app.domain.run_snapshot import RunSnapshot
-from app.orchestration.stages import StageOutput, collect_sources, verify_claims
+from app.orchestration.stages import StageOutput, verify_claims
 from app.providers.offline import UnavailableSourceProvider
 from app.providers.protocols import LLMProvider, SourceProvider
-from app.schemas import Claim, EvidenceRecord, RunWarning, SourceSnapshot
+from app.schemas import Claim, CompetitorObservation, EvidenceRecord, RunWarning, SourceSnapshot
 
 PipelineOutcome = Literal["completed", "partial", "failed"]
 
@@ -23,6 +25,7 @@ class PipelineResult:
     sources: list[SourceSnapshot] = field(default_factory=list)
     claims: list[Claim] = field(default_factory=list)
     evidence: list[EvidenceRecord] = field(default_factory=list)
+    observations: list[CompetitorObservation] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     report_available: bool = False
 
@@ -43,36 +46,45 @@ class DeterministicPipeline:
         source_provider: SourceProvider | None = None,
         llm_provider: LLMProvider | None = None,
         market_budget: AgentBudget | None = None,
+        competitor_budget: AgentBudget | None = None,
     ) -> None:
         self.source_provider = source_provider or UnavailableSourceProvider()
         self.llm_provider = llm_provider
         self.market_budget = market_budget or AgentBudget()
+        self.competitor_budget = competitor_budget or AgentBudget()
 
     async def run(self, run: RunSnapshot) -> PipelineResult:
         result = PipelineResult(outcome="partial")
         source_ids: set[str] = set()
 
-        market_result = await MarketResearchAgent().run(
-            make_context(run, self.source_provider, self.llm_provider),
-            self.market_budget,
+        market_task = MarketResearchAgent().run(
+            make_context(run, self.source_provider, self.llm_provider), self.market_budget
         )
-        market_stage = self._agent_stage_output(market_result, "market_statistics", self._provider_name())
-        result.stage_results.append(market_stage)
-        for source in market_result.sources:
-            if source.id not in source_ids:
-                result.sources.append(source)
-                source_ids.add(source.id)
-        self._add_agent_warnings(result, market_result)
+        competitor_task = CompetitorResearchAgent().run(
+            make_context(run, self.source_provider, self.llm_provider), self.competitor_budget
+        )
+        market_result, competitor_result = await asyncio.gather(
+            market_task,
+            competitor_task,
+            return_exceptions=True,
+        )
+        if isinstance(market_result, Exception):
+            market_result = self._failed_agent_result("market_statistics", market_result)
+        if isinstance(competitor_result, Exception):
+            competitor_result = self._failed_agent_result("competitor_research", competitor_result)
 
-        for stage_name in ("competitor_research",):
-            stage = await collect_sources(run, stage_name, self.source_provider)
-            result.stage_results.append(stage)
-            for source in stage.sources:
+        market_stage = self._agent_stage_output(market_result, "market_statistics", self._provider_name())
+        competitor_stage = self._agent_stage_output(competitor_result, "competitor_research", self._provider_name())
+        result.stage_results.append(market_stage)
+        self._add_agent_warnings(result, market_result)
+        result.stage_results.append(competitor_stage)
+        self._add_agent_warnings(result, competitor_result)
+        for agent in (market_result, competitor_result):
+            for source in agent.sources:
                 if source.id not in source_ids:
                     result.sources.append(source)
                     source_ids.add(source.id)
-            if stage.warning and stage.warning not in result.warnings:
-                result.warnings.append(stage.warning)
+        result.observations.extend(competitor_result.observations)
 
         result.stage_results.append(StageOutput(
             name="customer_voice",
@@ -136,6 +148,18 @@ class DeterministicPipeline:
             usage=agent.usage,
             coverage=agent.coverage,
             budget_exhausted=agent.budget_exhausted,
+            observations=agent.observations,
+        )
+
+    @staticmethod
+    def _failed_agent_result(name: str, error: Exception) -> AgentResult:
+        return AgentResult(
+            status="failed",
+            warnings=[RunWarning(
+                stage=name,
+                message=f"{name.replace('_', ' ').capitalize()} agent failed: {type(error).__name__}.",
+            )],
+            error_code=f"{name}_failed",
         )
 
     @staticmethod

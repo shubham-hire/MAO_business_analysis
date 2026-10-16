@@ -46,7 +46,7 @@ def create_app(
     )
     app.state.runner = runner or RunRunner(
         app.state.service,
-        DeterministicPipeline(configured_provider, configured_llm, market_budget),
+        DeterministicPipeline(configured_provider, configured_llm, market_budget, market_budget),
     )
 
     @app.exception_handler(MissingRun)

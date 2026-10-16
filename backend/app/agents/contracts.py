@@ -91,6 +91,10 @@ class AgentResult:
     coverage: CoverageSnapshot | None = None
     budget_exhausted: bool = False
 
+    @property
+    def competitor_observations(self) -> list[CompetitorObservation]:
+        return self.observations
+
 
 class AgentTask(Protocol):
     name: str

@@ -187,7 +187,6 @@ class CompetitorResearchAgent:
                 decision, decision_usage, decision_warning = await self._decide_coverage(
                     context,
                     list(sources_by_id.values()),
-                    list(observations_by_name.values()),
                     queries,
                     iteration,
                     ledger,
@@ -300,7 +299,6 @@ class CompetitorResearchAgent:
         self,
         context: AgentContext,
         sources: list[SourceSnapshot],
-        existing_observations: list[CompetitorObservation],
         previous_queries: list[str],
         iteration: int,
         ledger: AgentBudgetLedger,
@@ -322,7 +320,6 @@ class CompetitorResearchAgent:
             f"Market definition: {self._market_definition(context)}\n"
             f"Region: {context.run.intake.region}\n"
             f"User-listed competitors: {self._listed_competitors(context)}\n"
-            f"Existing observations: {existing_observations}\n"
             f"Previous queries: {previous_queries}\n"
             f"Iteration: {iteration}\n{source_text}"
         )
@@ -355,15 +352,21 @@ class CompetitorResearchAgent:
     ) -> ProviderResponse[Any]:
         if context.llm_provider is None or ledger.remaining_model_calls <= 0:
             raise RuntimeError("model call budget exhausted")
-        response = await self._with_deadline(
-            context.llm_provider.generate_structured(
-                system_prompt,
-                user_content,
-                output_model,
-                max_attempts=ledger.remaining_model_calls,
-            ),
-            ledger,
-        )
+        if ledger.expired:
+            raise asyncio.TimeoutError
+        try:
+            response = await self._with_deadline(
+                context.llm_provider.generate_structured(
+                    system_prompt,
+                    user_content,
+                    output_model,
+                    max_attempts=ledger.remaining_model_calls,
+                ),
+                ledger,
+            )
+        except Exception:
+            ledger.record_model_calls(min(1, ledger.remaining_model_calls))
+            raise
         ledger.record_model_calls(min(max(1, response.attempts), ledger.remaining_model_calls))
         return response
 
@@ -487,7 +490,10 @@ class CompetitorResearchAgent:
 
         features = list(dict.fromkeys([*current.features, *incoming.features]))
         source_ids = list(dict.fromkeys([*current.source_ids, *incoming.source_ids]))
-        pricing = incoming if incoming.pricing_status == "published" else current
+        if incoming.pricing_status == "published" or current.pricing_status != "published":
+            pricing = incoming
+        else:
+            pricing = current
         return current.model_copy(update={
             "source_type": "user_listed" if current.source_type == "user_listed" else incoming.source_type,
             "identity": choose_text(current.identity, incoming.identity),
@@ -719,6 +725,15 @@ class CompetitorResearchAgent:
             data["features"] = [data["features"]]
         if isinstance(data.get("source_ids"), str):
             data["source_ids"] = [data["source_ids"]]
+        if isinstance(data.get("published_pricing"), (int, float)):
+            data["published_pricing"] = str(data["published_pricing"])
+        source_type = data.get("source_type")
+        if isinstance(source_type, str):
+            normalized_source_type = " ".join(source_type.casefold().replace("-", " ").split())
+            if normalized_source_type in {"user", "listed", "user listed"}:
+                data["source_type"] = "user_listed"
+            elif normalized_source_type in {"alternative", "discovered alternative"}:
+                data["source_type"] = "discovered"
         pricing = data.get("published_pricing")
         if isinstance(pricing, Mapping):
             nested = pricing

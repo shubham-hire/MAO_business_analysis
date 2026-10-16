@@ -75,12 +75,29 @@ export type StageResult = {
   usage?: Record<string, number>;
   coverage?: CoverageSnapshot;
   budgetExhausted?: boolean;
+  observations?: CompetitorObservation[];
 };
 
 export type CoverageSnapshot = {
   summary: string;
   coveredDimensions: string[];
   missingDimensions: string[];
+};
+
+export type CompetitorObservation = {
+  competitorName: string;
+  sourceType: "user_listed" | "discovered";
+  identity: string;
+  targetCustomer: string;
+  features: string[];
+  positioning: string;
+  publishedPricing: string;
+  pricingStatus: "published" | "unknown" | "not_found";
+  billingPeriod: string;
+  currency: string;
+  regionalAvailability: string;
+  sourceIds: string[];
+  verificationStatus: "verified" | "unsupported" | "unchecked";
 };
 
 export type SourceSnapshot = {
@@ -145,6 +162,7 @@ export type RunDetail = RunSummary & {
   sources: SourceSnapshot[];
   claims: Claim[];
   evidence: EvidenceRecord[];
+  competitorObservations?: CompetitorObservation[];
 };
 
 export type RunsState =

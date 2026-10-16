@@ -202,6 +202,12 @@ h2 { font-size: clamp(32px, 4vw, 52px); font-weight: 600; line-height: 1; margin
 .stage-meta, .stage-gap { display: block; font-size: 11px; line-height: 1.35; margin-top: 6px; }
 .stage-meta { color: var(--ink-400); }
 .stage-gap { color: var(--accent); }
+.competitor-summary { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 14px; }
+.competitor-summary > strong { color: var(--ink-900); display: block; font-size: 12px; margin-bottom: 8px; }
+.competitor-observation { align-items: center; border-bottom: 1px solid var(--line); display: flex; font-size: 12px; justify-content: space-between; padding: 8px 0; }
+.competitor-observation:last-child { border-bottom: 0; }
+.competitor-observation span:first-child { color: var(--ink-900); font-weight: 600; }
+.competitor-observation span:last-child { color: var(--ink-500); }
 .stage-state { color: var(--ink-500); font: 10px "DM Mono", monospace; text-transform: uppercase; }
 .evidence-summary { background: var(--paper-50); border: 1px solid var(--line); padding: 22px; }
 .evidence-summary strong { font-size: 20px; }

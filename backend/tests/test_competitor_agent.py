@@ -125,7 +125,7 @@ async def test_competitor_agent_distinguishes_listed_and_discovered_competitors_
             summary="Identity and regional coverage are available; pricing is not published.",
             observations=[
                 observation("Known Co", source.id, source_type="user_listed"),
-                observation("Rival Co", source.id),
+                observation("Rival Co", source.id, pricing="$999/month"),
             ],
         ),
     ])
@@ -140,6 +140,7 @@ async def test_competitor_agent_distinguishes_listed_and_discovered_competitors_
     assert result.sources == [source]
     assert by_name["Known Co"].source_type == "user_listed"
     assert by_name["Rival Co"].source_type == "discovered"
+    assert by_name["Known Co"].published_pricing == "not_found"
     assert by_name["Rival Co"].published_pricing in {"unknown", "not_found"}
     assert by_name["Rival Co"].verification_status == "unchecked"
     assert result.coverage is not None

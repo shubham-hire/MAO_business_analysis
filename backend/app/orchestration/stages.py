@@ -6,7 +6,7 @@ from hashlib import sha256
 
 from app.domain.run_snapshot import RunSnapshot
 from app.providers.protocols import SourceProvider
-from app.schemas import Claim, ClaimType, CoverageSnapshot, EvidenceRecord, EvidenceGrade, SourceSnapshot, VerificationStatus
+from app.schemas import Claim, ClaimType, CompetitorObservation, CoverageSnapshot, EvidenceRecord, EvidenceGrade, SourceSnapshot, VerificationStatus
 
 
 def utc_now() -> datetime:
@@ -31,6 +31,7 @@ class StageOutput:
     usage: dict[str, int | float] = field(default_factory=dict)
     coverage: CoverageSnapshot | None = None
     budget_exhausted: bool = False
+    observations: list[CompetitorObservation] = field(default_factory=list)
 
 
 async def collect_sources(run: RunSnapshot, stage: str, provider: SourceProvider) -> StageOutput:
