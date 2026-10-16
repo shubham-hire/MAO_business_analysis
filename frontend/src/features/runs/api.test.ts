@@ -24,7 +24,7 @@ describe("fixture run creation API", () => {
     });
 
     expect(confirmed.id).toBe(run.id);
-    expect(confirmed.status).toBe("awaiting_research");
+    expect(confirmed.status).toBe("queued");
     expect(confirmed.evidenceCount).toBe(0);
     expect(confirmed.reportAvailable).toBe(false);
   });

@@ -23,7 +23,7 @@ export function LandingPage({ onOpenApp }: LandingPageProps) {
     <div className="landing-page">
       <aside className="landing-ticker" aria-label="System notice">
         <span><i /> SYSTEM SPEC 0.9.4 // ALPHA BUILD</span>
-        <span className="ticker-detail">AUDITING LOGIC STRICT MODE: ZERO SPECULATION THRESHOLD</span>
+        <span className="ticker-detail">EVIDENCE POLICY: MISSING AND CONFLICTING DATA STAYS VISIBLE</span>
         <span className="ticker-badge">EARLY PROJECT · IN DEVELOPMENT</span>
       </aside>
 
@@ -46,7 +46,7 @@ export function LandingPage({ onOpenApp }: LandingPageProps) {
                 <h1>Find out if your product idea has a market, <u>with proof.</u></h1>
                 <p>Describe your product. AI agents research the market, check every source, and give you a report you can verify.</p>
                 <div className="landing-hero-actions"><button className="landing-button landing-button-dark" type="button" onClick={onOpenApp}>Start a research run <span>↗</span></button><span className="landing-audit-tag">◉ AUDIT v0.9 // NO SPECULATION</span></div>
-                <div className="landing-principles"><span><b>NO HALLUCINATION</b>Explicit data floor enforced</span><span><b>SOURCE PARSED</b>Public evidence first</span><span><b>REPRODUCIBLE</b>Deterministic audit traces</span></div>
+                <div className="landing-principles"><span><b>NO SILENT GUESSES</b>Missing data is labelled</span><span><b>SOURCE PARSED</b>Public evidence first</span><span><b>REPRODUCIBLE</b>Deterministic audit traces</span></div>
               </div>
               <VerificationWidget />
             </div>
@@ -57,7 +57,7 @@ export function LandingPage({ onOpenApp }: LandingPageProps) {
           <div className="landing-process-grid">
             <ProcessCard number="01" label="INIT" title="Describe your product" text="Enter your product idea, target customer, geography and expected price tier." code={["[PARAM] domain: B2B / GovTech", "[PARAM] geography: IN / EU", "[PARAM] tier: Enterprise"]} />
             <ProcessCard number="02" label="SYNTH" title="Agents do the research" text="Specialized agents examine market statistics, competitor offerings, pricing and permitted public feedback." code={["FETCH public_sources ... OK", "PARSING competitor_pricing ... OK", "AUDITING evidence ... OK"]} />
-            <ProcessCard number="03" label="AUDIT" title="Get a report with proof" text="Each finding cites a source, carries an evidence grade and stays inside the market-feasibility scope." code={["CITATIONS: Verified", "GAPS: Explicit", "EXPORT: PDF / JSON"]} />
+            <ProcessCard number="03" label="AUDIT" title="Get a report you can inspect" text="Each finding points to a source, carries an evidence grade and stays inside the market-feasibility scope." code={["CLAIMS: Source-linked", "GAPS: Explicit", "EXPORT: PDF / JSON"]} />
           </div>
         </LandingSection>
 
@@ -79,7 +79,7 @@ export function LandingPage({ onOpenApp }: LandingPageProps) {
 
         <section className="landing-section landing-section-muted" id="faq"><div className="landing-container"><LandingSectionHeader number="06" label="VERIFICATION & LIMITATIONS" title="Frequently asked questions" description="Direct, honest answers about what the system can and cannot do." /><div className="landing-faq">{[["Does it guarantee success?", "No. It evaluates market conditions and public evidence. Execution, product quality and timing remain up to you."], ["Where does the data come from?", "Public market data, government statistics, company pages and permitted public sources. Every claim points back to its origin."], ["Does it judge whether I can build it?", "No. This product covers market feasibility only, not technical or financial feasibility." ]].map(([question, answer], index) => <details key={question} open={index === 0}><summary><span>QUERY // 0{index + 1}</span><b>{question}</b><i>+</i></summary><p>{answer}</p></details>)}</div></div></section>
 
-        <section className="landing-cta" id="early-access"><div className="landing-cta-card"><span className="landing-kicker">■ 07 / ACCESS INVITATION</span><h2>Ready to test your idea with real data?</h2><p>Open the product workspace and define your first research mission.</p><button className="landing-button landing-button-dark" type="button" onClick={onOpenApp}>Open the research workspace <span>↗</span></button><div className="landing-cta-meta"><span>CITATIONS GUARANTEED</span><span>ZERO ESTIMATIONS</span><span>EARLY PROJECT · NOT YET RELEASED</span></div></div></section>
+        <section className="landing-cta" id="early-access"><div className="landing-cta-card"><span className="landing-kicker">■ 07 / ACCESS INVITATION</span><h2>Ready to test your idea with real data?</h2><p>Open the product workspace and define your first research mission.</p><button className="landing-button landing-button-dark" type="button" onClick={onOpenApp}>Open the research workspace <span>↗</span></button><div className="landing-cta-meta"><span>SOURCE-LINKED FINDINGS</span><span>UNCERTAINTY VISIBLE</span><span>EARLY PROJECT · NOT YET RELEASED</span></div></div></section>
       </main>
       <footer className="landing-footer"><b>TRACER</b><span>SYSTEM REF // TR-ALPHA</span><span>MARKET FEASIBILITY INTELLIGENCE · 2026</span></footer>
     </div>
@@ -99,5 +99,5 @@ function ProcessCard({ number, label, title, text, code }: { number: string; lab
 }
 
 function VerificationWidget() {
-  return <div className="verification-widget"><header><b>■ VERIFICATION SPEC // PROTOCOL</b><span>SYSTEM READY</span></header><div className="verification-body"><div><span>Primary registry indexes</span><strong>148,920</strong></div><div><span>Registry coverage target</span><b>100% EXPLICIT</b><i><em /></i></div><div><span>Primary citation floor</span><b>100% EXPLICIT</b></div><div><span>Speculative filler logic</span><strong className="danger">DISALLOWED</strong></div><blockquote>“Findings without traceable records are flagged as non-verifiable data gaps.”</blockquote></div><footer>PARSER: V3_AUDIT_INDEX <span>STATUS: OPERATIONAL</span></footer></div>;
+  return <div className="verification-widget"><header><b>■ VERIFICATION SPEC // PROTOCOL</b><span>ILLUSTRATIVE</span></header><div className="verification-body"><div><span>Source coverage</span><strong>Tracked per run</strong></div><div><span>Numeric context</span><b>YEAR · REGION · UNIT</b><i><em /></i></div><div><span>Claim status</span><b>VERIFIED / FLAGGED</b></div><div><span>Unverified data</span><strong className="danger">SHOWN AS A GAP</strong></div><blockquote>“Findings without traceable records are flagged as non-verifiable data gaps.”</blockquote></div><footer>PARSER: CONTROLLED WORKFLOW <span>STATUS: DESIGN PREVIEW</span></footer></div>;
 }

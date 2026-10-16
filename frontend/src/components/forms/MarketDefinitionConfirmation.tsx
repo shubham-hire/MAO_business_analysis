@@ -1,15 +1,16 @@
 import { useState, type FormEvent } from "react";
-import type { MarketDefinitionProposal, RunSummary } from "../../features/runs/models";
+import type { MarketDefinitionProposal, ProductIntake, RunSummary } from "../../features/runs/models";
 import { StatusBadge } from "../runs/StatusBadge";
 
 type MarketDefinitionConfirmationProps = {
   run: RunSummary;
+  intake: ProductIntake;
   onConfirm: (definition: MarketDefinitionProposal) => Promise<RunSummary>;
   onCancel: () => void;
   onConfirmed: (run: RunSummary) => void;
 };
 
-export function MarketDefinitionConfirmation({ run, onConfirm, onCancel, onConfirmed }: MarketDefinitionConfirmationProps) {
+export function MarketDefinitionConfirmation({ run, intake, onConfirm, onCancel, onConfirmed }: MarketDefinitionConfirmationProps) {
   const [definition, setDefinition] = useState<MarketDefinitionProposal>(run.proposedMarketDefinition ?? {
     category: "",
     includedBoundaries: "",
@@ -53,7 +54,13 @@ export function MarketDefinitionConfirmation({ run, onConfirm, onCancel, onConfi
         <div className="section-marker section-marker-dark">002 / CONFIRM THE MARKET</div>
         <h2 id="market-definition-title">Make the boundary explicit.</h2>
         <p>Statistics and competitor results depend on this definition. Review the proposal, edit anything that is too broad or narrow, then confirm the scope before research starts.</p>
-        <div className="definition-status"><StatusBadge status={run.status} /><span>Research has not started.</span></div>
+        <div className="definition-status"><StatusBadge status={run.status} /><span>Confirmation is required before the pipeline can run.</span></div>
+      </div>
+
+      <div className="scope-summary" aria-label="Confirmed intake context">
+        <div><span>Target customer</span><strong>{intake.targetCustomer}</strong></div>
+        <div><span>Region</span><strong>{intake.region}</strong></div>
+        <div><span>Expected price</span><strong>{intake.priceRange.currency} {intake.priceRange.minimum.toLocaleString()}–{intake.priceRange.maximum.toLocaleString()}</strong></div>
       </div>
 
       <form className="definition-form" onSubmit={handleSubmit} noValidate>

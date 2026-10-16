@@ -1,7 +1,6 @@
 export type RunStatus =
   | "draft"
   | "awaiting_market_confirmation"
-  | "awaiting_research"
   | "queued"
   | "running"
   | "partial"
@@ -48,6 +47,92 @@ export type RunSummary = {
   reportAvailable: boolean;
   warnings: RunWarning[];
   proposedMarketDefinition?: MarketDefinitionProposal;
+  sourceCount?: number;
+  claimCount?: number;
+  verifiedClaimCount?: number;
+};
+
+export type StageState = "pending" | "running" | "completed" | "partial" | "failed" | "skipped";
+
+export type StageResult = {
+  name: string;
+  state: StageState;
+  attempt: number;
+  startedAt?: string;
+  completedAt?: string;
+  provider?: string;
+  sourceIds: string[];
+  claimIds: string[];
+  evidenceIds: string[];
+  sourceCount: number;
+  claimCount: number;
+  evidenceCount: number;
+  warning?: string;
+  errorCode?: string;
+};
+
+export type SourceSnapshot = {
+  id: string;
+  title: string;
+  url: string;
+  publisher: string;
+  publicationDate?: string;
+  retrievalDate: string;
+  contentHash: string;
+  storedText?: string;
+  permittedExcerpt?: string;
+  origin: string;
+  provider: string;
+};
+
+export type Claim = {
+  id: string;
+  stableKey: string;
+  text: string;
+  subject: string;
+  attribute: string;
+  period?: string;
+  year?: number;
+  region?: string;
+  claimType: string;
+  sourceIds: string[];
+  evidenceIds: string[];
+  independenceGroup?: string;
+  verificationStatus: "verified" | "unsupported" | "unchecked";
+  evidenceGrade?: "A" | "B" | "C" | "D";
+  value?: number;
+  unit?: string;
+  currency?: string;
+};
+
+export type EvidenceRecord = {
+  id: string;
+  claimId: string;
+  sourceId: string;
+  excerpt: string;
+  startOffset?: number;
+  endOffset?: number;
+  relation: "supports" | "contradicts";
+  excerptMatch: "exact" | "fuzzy" | "missing";
+};
+
+export type RunEvent = {
+  id: string;
+  runId: string;
+  type: string;
+  timestamp: string;
+  message: string;
+  status: string;
+  actor: string;
+  stage?: string;
+};
+
+export type RunDetail = RunSummary & {
+  stages: StageResult[];
+  intake: ProductIntake;
+  sources: SourceSnapshot[];
+  claims: Claim[];
+  evidence: EvidenceRecord[];
 };
 
 export type RunsState =

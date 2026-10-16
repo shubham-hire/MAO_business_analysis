@@ -3,7 +3,7 @@ import { EmptyState } from "../../components/feedback/EmptyState";
 import { ErrorState } from "../../components/feedback/ErrorState";
 import { LoadingState } from "../../components/feedback/LoadingState";
 import { RunCard } from "../../components/runs/RunCard";
-import { fixtureRunsApi } from "./api";
+import { runsApi } from "./api";
 import type { RunsApi } from "./api";
 import type { RunSummary, RunsState } from "./models";
 
@@ -11,9 +11,10 @@ type DashboardProps = {
   api?: RunsApi;
   initialRuns?: RunSummary[];
   onStartNewRun?: () => void;
+  onOpenRun?: (run: RunSummary) => void;
 };
 
-export function RunsDashboard({ api = fixtureRunsApi, initialRuns, onStartNewRun }: DashboardProps) {
+export function RunsDashboard({ api = runsApi, initialRuns, onStartNewRun, onOpenRun }: DashboardProps) {
   const [state, setState] = useState<RunsState>(() =>
     initialRuns ? { status: "ready", runs: initialRuns } : { status: "loading" },
   );
@@ -63,7 +64,7 @@ export function RunsDashboard({ api = fixtureRunsApi, initialRuns, onStartNewRun
         <div className="metric-strip" aria-label="Research summary">
           <Metric label="Active runs" value={metrics.active.toString().padStart(2, "0")} />
           <Metric label="Completed" value={metrics.completed.toString().padStart(2, "0")} />
-          <Metric label="Verified evidence" value={metrics.evidence.toString().padStart(2, "0")} />
+          <Metric label="Verified claims" value={metrics.evidence.toString().padStart(2, "0")} />
           <Metric label="Latest activity" value={metrics.latest} />
         </div>
       </section>
@@ -84,8 +85,8 @@ export function RunsDashboard({ api = fixtureRunsApi, initialRuns, onStartNewRun
         {state.status === "ready" && state.runs.length === 0 && <EmptyState onStartNewRun={onStartNewRun} />}
         {state.status === "ready" && state.runs.length > 0 && (
           <div className="run-list">
-            {state.runs.map((run) => (
-              <RunCard key={run.id} run={run} />
+            {state.runs.map((run, index) => (
+              <RunCard key={run.id} run={run} displayNumber={index + 1} onOpen={() => onOpenRun?.(run)} />
             ))}
           </div>
         )}

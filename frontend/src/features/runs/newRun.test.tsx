@@ -97,7 +97,7 @@ describe("NewRun", () => {
   it("requires explicit confirmation, submits edited boundaries and does not start research", async () => {
     const user = userEvent.setup();
     const createRun = vi.fn<(input: ProductIntake) => Promise<RunSummary>>().mockResolvedValue(draft);
-    const readyRun: RunSummary = { ...draft, status: "awaiting_research", marketDefinition: "Edited delivery market" };
+    const readyRun: RunSummary = { ...draft, status: "queued", marketDefinition: "Edited delivery market" };
     const confirmMarketDefinition = vi.fn<(id: string, definition: MarketDefinitionProposal) => Promise<RunSummary>>().mockResolvedValue(readyRun);
     render(<NewRun api={{ createRun, confirmMarketDefinition }} onBackToRuns={vi.fn()} />);
     await fillRequiredFields()(user);
@@ -118,8 +118,8 @@ describe("NewRun", () => {
       competitors: ["Store A", "Store B"],
     }));
     expect(await screen.findByRole("heading", { name: "The research boundary is set." })).toBeInTheDocument();
-    expect(screen.getByText("Awaiting research")).toBeInTheDocument();
-    expect(screen.getByText(/Research has not started yet/)).toBeInTheDocument();
+    expect(screen.getByText("Queued")).toBeInTheDocument();
+    expect(screen.getByText(/queued for the deterministic research pipeline/)).toBeInTheDocument();
   });
 
   it("shows API errors while keeping the form available", async () => {

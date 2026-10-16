@@ -26,6 +26,15 @@ describe("RunsDashboard", () => {
     expect(screen.getByRole("link", { name: /open evidence-led coffee marketplace/i })).toBeInTheDocument();
   });
 
+  it("opens a real run destination instead of only changing a hash", async () => {
+    const user = userEvent.setup();
+    const onOpenRun = vi.fn();
+    render(<RunsDashboard initialRuns={[partialRun]} onOpenRun={onOpenRun} />);
+
+    await user.click(screen.getByRole("link", { name: /open evidence-led coffee marketplace/i }));
+    expect(onOpenRun).toHaveBeenCalledWith(partialRun);
+  });
+
   it("shows an empty state with a first-run action", () => {
     render(<RunsDashboard initialRuns={[]} />);
 

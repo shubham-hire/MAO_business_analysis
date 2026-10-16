@@ -28,6 +28,36 @@ The dashboard currently uses local fixtures through an API adapter. It includes 
 
 The public landing page is the default view at `/`. Choose **Open application** or **Start a research run** to enter the workspace. The product shell brand link returns to the landing page.
 
+## Backend setup
+
+The first backend slice is a FastAPI run-control plane. It owns intake validation, deterministic market-definition proposals, ownership-scoped run retrieval, confirmation state transitions and structured run events. It intentionally performs no external search or model calls yet.
+
+```bash
+make backend-install
+make backend-dev
+```
+
+The API runs at `http://localhost:8000`. Useful endpoints:
+
+```text
+GET  /healthz
+GET  /runs
+POST /runs
+GET  /runs/{id}
+POST /runs/{id}/market-definition
+GET  /runs/{id}/events
+```
+
+The default development identity is `demo-user`. A real authentication layer will replace the development `X-User-ID` header before multi-user use.
+
+To point the frontend at the backend instead of local fixtures:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+Then run the frontend and backend together. When `VITE_API_BASE_URL` is present, the dashboard and new-run flow use the FastAPI endpoints. Without it, the frontend stays fixture-backed for offline UI development.
+
 ## Checks
 
 ```bash
@@ -37,7 +67,7 @@ make lint
 make build
 ```
 
-The unit tests run offline and cover dashboard state rendering, readable run statuses, partial warnings, empty state, retry behavior and loading behavior.
+The test command runs both frontend and backend suites offline. Frontend tests cover dashboard state rendering, readable run statuses, partial warnings, empty state, retry behavior and loading behavior. Backend tests cover intake validation, run creation, ownership isolation, market confirmation, state transitions, event replay and the honest no-provider demo pipeline.
 
 ## Docker
 
@@ -47,6 +77,14 @@ docker run --rm -p 4173:4173 market-feasibility-frontend
 ```
 
 Open `http://localhost:4173`.
+
+To run the frontend and backend together:
+
+```bash
+docker compose up --build
+```
+
+Open `http://localhost:4173`; the frontend is built with the backend API at `http://localhost:8000`.
 
 ## Frontend structure
 

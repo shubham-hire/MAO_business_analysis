@@ -1,0 +1,1 @@
+"""Market Feasibility backend application."""

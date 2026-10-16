@@ -3,7 +3,6 @@ import type { RunStatus } from "../../features/runs/models";
 const labels: Record<RunStatus, string> = {
   draft: "Draft",
   awaiting_market_confirmation: "Awaiting market confirmation",
-  awaiting_research: "Awaiting research",
   queued: "Queued",
   running: "Researching",
   partial: "Partial results",
